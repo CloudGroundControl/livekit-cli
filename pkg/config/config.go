@@ -21,6 +21,7 @@ type ProjectConfig struct {
 	URL       string `yaml:"url"`
 	APIKey    string `yaml:"api_key"`
 	APISecret string `yaml:"api_secret"`
+	Token     string `yaml:"token"`
 }
 
 func LoadDefaultProject() (*ProjectConfig, error) {

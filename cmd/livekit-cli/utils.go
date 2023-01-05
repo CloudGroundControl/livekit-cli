@@ -11,7 +11,7 @@ import (
 	"github.com/ggwhite/go-masker"
 	"github.com/urfave/cli/v2"
 
-	"github.com/livekit/livekit-cli/pkg/config"
+	"livekit-cli-cgc/pkg/config"
 )
 
 var (
@@ -29,6 +29,10 @@ var (
 	apiKeyFlag = &cli.StringFlag{
 		Name:    "api-key",
 		EnvVars: []string{"LIVEKIT_API_KEY"},
+	}
+	tokenFlag = &cli.StringFlag{
+		Name:  "token",
+		Usage: "livekit token",
 	}
 	secretFlag = &cli.StringFlag{
 		Name:    "api-secret",
@@ -52,6 +56,7 @@ var (
 func withDefaultFlags(flags ...cli.Flag) []cli.Flag {
 	return append([]cli.Flag{
 		urlFlag,
+		tokenFlag,
 		apiKeyFlag,
 		secretFlag,
 		projectFlag,
@@ -116,6 +121,10 @@ func loadProjectDetails(c *cli.Context, opts ...loadOption) (*config.ProjectConf
 	if val := c.String("url"); val != "" {
 		pc.URL = val
 	}
+	if val := c.String("token"); val != "" {
+		pc.Token = val
+	}
+
 	if val := c.String("api-key"); val != "" {
 		pc.APIKey = val
 	}
@@ -148,17 +157,17 @@ func loadProjectDetails(c *cli.Context, opts ...loadOption) (*config.ProjectConf
 		logDetails(c, dp)
 		return dp, nil
 	}
-
 	if p.requireURL && pc.URL == "" {
 		return nil, errors.New("url is required")
 	}
-	if pc.APIKey == "" {
-		return nil, errors.New("api-key is required")
+	if pc.Token == "" {
+		if pc.APIKey == "" {
+			return nil, errors.New("api-key is required")
+		}
+		if pc.APISecret == "" {
+			return nil, errors.New("api-secret is required")
+		}
 	}
-	if pc.APISecret == "" {
-		return nil, errors.New("api-secret is required")
-	}
-
 	// cannot happen
 	return pc, nil
 }

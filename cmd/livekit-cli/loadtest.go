@@ -10,7 +10,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/urfave/cli/v2"
 
-	"github.com/livekit/livekit-cli/pkg/loadtester"
+	"livekit-cli-cgc/pkg/loadtester"
+
 	"github.com/livekit/protocol/logger"
 	lksdk "github.com/livekit/server-sdk-go"
 )

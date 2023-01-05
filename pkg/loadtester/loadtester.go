@@ -10,7 +10,8 @@ import (
 	"github.com/pion/webrtc/v3"
 	"go.uber.org/atomic"
 
-	provider2 "github.com/livekit/livekit-cli/pkg/provider"
+	provider2 "livekit-cli-cgc/pkg/provider"
+
 	"github.com/livekit/protocol/livekit"
 	lksdk "github.com/livekit/server-sdk-go"
 	"github.com/livekit/server-sdk-go/pkg/samplebuilder"

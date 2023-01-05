@@ -12,7 +12,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v2"
 
-	"github.com/livekit/livekit-cli/pkg/config"
+	"livekit-cli-cgc/pkg/config"
 )
 
 var (

@@ -14,7 +14,8 @@ import (
 	"github.com/pion/webrtc/v3"
 	"github.com/urfave/cli/v2"
 
-	provider2 "github.com/livekit/livekit-cli/pkg/provider"
+	provider2 "livekit-cli-cgc/pkg/provider"
+
 	"github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
 	lksdk "github.com/livekit/server-sdk-go"

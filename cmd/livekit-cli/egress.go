@@ -15,7 +15,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/livekit/livekit-cli/pkg/loadtester"
+	"livekit-cli-cgc/pkg/loadtester"
+
 	"github.com/livekit/protocol/egress"
 	"github.com/livekit/protocol/livekit"
 	lksdk "github.com/livekit/server-sdk-go"
