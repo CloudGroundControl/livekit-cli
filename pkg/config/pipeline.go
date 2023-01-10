@@ -39,11 +39,16 @@ type PipelineConfig struct {
 
 	GstReady chan struct{}       `yaml:"-"`
 	Info     *livekit.EgressInfo `yaml:"-"`
+
+	OnDataReceived func(data []byte, rp *lksdk.RemoteParticipant)
 }
 
 type SourceParams struct {
 	// source
-	Token string
+	Token     string
+	APIKey    string
+	APISecret string
+	Room      string
 
 	// web source
 	Display    string
@@ -106,14 +111,18 @@ type UploadParams struct {
 }
 
 type ProcessRequest struct {
-	room       *lksdk.Room
-	roomCB     *lksdk.RoomCallback
-	WsUrl      string
-	RoomId     string
-	TrackId    string
-	Token      string
-	Filepath   string
-	OutputJpeg bool
+	room                *lksdk.Room
+	roomCB              *lksdk.RoomCallback
+	WsUrl               string
+	RoomId              string
+	ParticipantIdentity string
+	TrackId             string
+	Token               string
+	APIKey              string
+	APISecret           string
+	Filepath            string
+	OutputJpeg          bool
+	OnDataReceived      func(data []byte, rp *lksdk.RemoteParticipant)
 }
 
 func NewPipelineConfig(req *ProcessRequest) (*PipelineConfig, error) {
@@ -128,6 +137,7 @@ func NewPipelineConfig(req *ProcessRequest) (*PipelineConfig, error) {
 func (p *PipelineConfig) Update(request *ProcessRequest) error {
 	// start with defaults
 	p.OutputJpeg = request.OutputJpeg
+	p.OnDataReceived = request.OnDataReceived
 	p.Info = &livekit.EgressInfo{
 		RoomId: request.RoomId,
 		Status: livekit.EgressStatus_EGRESS_STARTING,
@@ -168,7 +178,15 @@ func (p *PipelineConfig) Update(request *ProcessRequest) error {
 	if request.Token != "" {
 		p.Token = request.Token
 	} else {
-		return errors.ErrInvalidInput("token or api key/secret")
+		if request.APIKey != "" && request.APISecret != "" {
+			p.APIKey = request.APIKey
+			p.APISecret = request.APISecret
+			p.ParticipantIdentity = request.ParticipantIdentity
+			p.Room = request.RoomId
+			p.Token = ""
+		} else {
+			return errors.ErrInvalidInput("token or api key/secret")
+		}
 	}
 
 	// url

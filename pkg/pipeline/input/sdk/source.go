@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +22,7 @@ func (s *SDKInput) joinRoom(p *config.PipelineConfig) error {
 		OnDisconnected:            s.onDisconnected,
 		OnParticipantDisconnected: s.onParticipantDisconnected,
 		ParticipantCallback: lksdk.ParticipantCallback{
+			OnDataReceived:     p.OnDataReceived,
 			OnTrackMuted:       s.onTrackMuted,
 			OnTrackUnmuted:     s.onTrackUnmuted,
 			OnTrackPublished:   s.onTrackPublished,
@@ -107,7 +107,6 @@ func (s *SDKInput) joinRoom(p *config.PipelineConfig) error {
 		// write blank frames only when writing to mp4
 		writeBlanks := p.VideoCodec == types.MimeTypeH264
 
-		fmt.Printf("Input %s %s\n", track.ID(), codec)
 		switch track.Kind() {
 		case webrtc.RTPCodecTypeAudio:
 			s.audioSrc = app.SrcFromElement(src)
@@ -134,10 +133,19 @@ func (s *SDKInput) joinRoom(p *config.PipelineConfig) error {
 			}
 		}
 	}
-
-	s.room = lksdk.CreateRoom(cb)
-	logger.Debugw("connecting to room")
-	if err := s.room.JoinWithToken(p.WsUrl, p.Token, lksdk.WithAutoSubscribe(false)); err != nil {
+	var err error
+	if p.Token != "" {
+		s.room, err = lksdk.ConnectToRoomWithToken(p.WsUrl, p.Token, cb, lksdk.WithAutoSubscribe(false))
+	} else {
+		s.room, err = lksdk.ConnectToRoom(p.WsUrl, lksdk.ConnectInfo{
+			APIKey:              p.APIKey,
+			APISecret:           p.APISecret,
+			RoomName:            p.Room,
+			ParticipantIdentity: p.ParticipantIdentity,
+			ParticipantName:     p.ParticipantIdentity,
+		}, cb, lksdk.WithAutoSubscribe(false))
+	}
+	if err != nil {
 		return err
 	}
 
