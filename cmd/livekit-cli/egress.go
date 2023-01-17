@@ -383,7 +383,7 @@ func testEgressTemplate(c *cli.Context) error {
 		}
 
 		testers = append(testers, lt)
-		if _, err = lt.PublishSimulcastTrack("demo-video", "high", ""); err != nil {
+		if _, err = lt.PublishSimulcastTrack("demo-video", "high", "", false); err != nil {
 			return err
 		}
 	}

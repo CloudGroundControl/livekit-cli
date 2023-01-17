@@ -21,6 +21,17 @@ type H264VideoLooper struct {
 	reader        *h264reader.H264Reader
 }
 
+func NewH264VideoLooperBuffer(buffer []byte, spec *videoSpec) (*H264VideoLooper, error) {
+	l := &H264VideoLooper{
+		spec:          spec,
+		frameDuration: time.Second / time.Duration(spec.fps),
+	}
+
+	l.buffer = buffer
+
+	return l, nil
+}
+
 func NewH264VideoLooper(input io.Reader, spec *videoSpec) (*H264VideoLooper, error) {
 	l := &H264VideoLooper{
 		spec:          spec,

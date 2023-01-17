@@ -128,7 +128,7 @@ func handlePublish(room *lksdk.Room, name string, fps float64) error {
 func publishDemo(room *lksdk.Room) error {
 	var tracks []*lksdk.LocalSampleTrack
 
-	loopers, err := provider2.CreateVideoLoopers("high", "", true)
+	loopers, err := provider2.CreateVideoLoopers("high", "", true, false)
 	if err != nil {
 		return err
 	}

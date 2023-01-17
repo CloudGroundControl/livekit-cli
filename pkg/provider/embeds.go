@@ -1,10 +1,14 @@
 package provider
 
 import (
+	"bytes"
 	"embed"
 	"fmt"
+	"io"
+	"io/fs"
 	"math"
 	"strconv"
+	"sync"
 
 	"go.uber.org/atomic"
 
@@ -61,11 +65,8 @@ func circlesSpec(width, kbps, fps int) *videoSpec {
 	}
 }
 
-func createSpecs(prefix string, codec string, bitrates ...int) []*videoSpec {
+func createSpecs(prefix string, codec string, videoFps []int, bitrates ...int) []*videoSpec {
 	var specs []*videoSpec
-	videoFps := []int{
-		15, 20, 30,
-	}
 	for i, b := range bitrates {
 		dimMultiple := int(math.Pow(2, float64(i)))
 		specs = append(specs, &videoSpec{
@@ -90,13 +91,25 @@ var (
 	audioIndex atomic.Int64
 )
 
+var videoCaches map[string][]byte
+var lock = sync.RWMutex{}
+
 func init() {
+	cgcFps := []int{
+		30, 30, 30,
+	}
+	videoFps := []int{
+		15, 20, 30,
+	}
+
 	videoSpecs = [][]*videoSpec{
-		createSpecs("butterfly", h264Codec, 150, 400, 2000),
-		createSpecs("cartoon", h264Codec, 120, 400, 1500),
-		createSpecs("crescent", vp8Codec, 150, 600, 2000),
-		createSpecs("neon", vp8Codec, 150, 600, 2000),
-		createSpecs("tunnel", vp8Codec, 150, 600, 2000),
+		createSpecs("aerial", h264Codec, cgcFps, 150, 400, 4000),
+		createSpecs("manly", h264Codec, cgcFps, 150, 400, 4000),
+		createSpecs("butterfly", h264Codec, videoFps, 150, 400, 2000),
+		createSpecs("cartoon", h264Codec, videoFps, 120, 400, 1500),
+		createSpecs("crescent", vp8Codec, videoFps, 150, 600, 2000),
+		createSpecs("neon", vp8Codec, videoFps, 150, 600, 2000),
+		createSpecs("tunnel", vp8Codec, videoFps, 150, 600, 2000),
 		{
 			circlesSpec(180, 200, 15),
 			circlesSpec(360, 700, 20),
@@ -114,6 +127,8 @@ func init() {
 	}
 }
 
+//var count = 0
+
 func randomVideoSpecsForCodec(videoCodec string) []*videoSpec {
 	filtered := make([][]*videoSpec, 0)
 	for _, specs := range videoSpecs {
@@ -125,8 +140,14 @@ func randomVideoSpecsForCodec(videoCodec string) []*videoSpec {
 	return filtered[chosen]
 }
 
-func CreateVideoLoopers(resolution string, codecFilter string, simulcast bool) ([]VideoLooper, error) {
-	specs := randomVideoSpecsForCodec(codecFilter)
+func CreateVideoLoopers(resolution string, codecFilter string, simulcast bool, cgc bool) ([]VideoLooper, error) {
+	var specs []*videoSpec
+	if cgc {
+		specs = videoSpecs[0]
+		//specs = videoSpecs[1]
+	} else {
+		specs = randomVideoSpecsForCodec(codecFilter)
+	}
 	numToKeep := 0
 	switch resolution {
 	case "medium":
@@ -142,13 +163,50 @@ func CreateVideoLoopers(resolution string, codecFilter string, simulcast bool) (
 	}
 	loopers := make([]VideoLooper, 0)
 	for _, spec := range specs {
-		f, err := res.Open(spec.Name())
-		if err != nil {
-			return nil, err
+		var err error
+		var f fs.File
+		var buf []byte
+		if cgc {
+			if videoCaches == nil {
+				videoCaches = make(map[string][]byte)
+			}
+			lock.Lock()
+			//count++
+			//fmt.Printf("lock %d\n", count)
+			buf = videoCaches[spec.Name()]
+			if buf == nil {
+				f, err = res.Open(spec.Name())
+				if err != nil {
+					return nil, err
+				}
+				bufBuffer := bytes.NewBuffer(nil)
+				if _, err := io.Copy(bufBuffer, f); err != nil {
+					return nil, err
+				}
+				buf = bufBuffer.Bytes()
+				videoCaches[spec.Name()] = buf
+				f.Close()
+			}
+			//count--
+			//fmt.Printf("unlock %d\n", count)
+			lock.Unlock()
+			//fmt.Println("Unlock")
+		} else {
+			f, err = res.Open(spec.Name())
+			if err != nil {
+				return nil, err
+			}
+			defer f.Close()
 		}
-		defer f.Close()
+
 		if spec.codec == h264Codec {
-			looper, err := NewH264VideoLooper(f, spec)
+			var looper *H264VideoLooper
+
+			if cgc {
+				looper, err = NewH264VideoLooperBuffer(buf, spec)
+			} else {
+				looper, err = NewH264VideoLooper(f, spec)
+			}
 			if err != nil {
 				return nil, err
 			}

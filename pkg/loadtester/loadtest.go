@@ -57,7 +57,7 @@ func NewLoadTest(params Params) *LoadTest {
 }
 
 func (t *LoadTest) Run() error {
-	stats, err := t.run(t.Params)
+	stats, err := t.run(t.Params, false)
 	if err != nil {
 		return err
 	}
@@ -128,6 +128,61 @@ func (t *LoadTest) Run() error {
 	_ = w.Flush()
 	return nil
 }
+func (t *LoadTest) RunCGCSuite(useCase int, w *tabwriter.Writer) error {
+	cases := []*struct {
+		publishers  int
+		subscribers int
+		video       bool
+
+		tracks  int64
+		latency time.Duration
+		dropped float64
+	}{
+		{publishers: 16, subscribers: 3, video: true},
+		{publishers: 16, subscribers: 19, video: true},
+		{publishers: 4, subscribers: 50, video: true},
+	}
+
+	c := cases[useCase]
+	caseParams := t.Params
+	videoString := "Yes"
+	if c.video {
+		caseParams.VideoPublishers = c.publishers
+	} else {
+		caseParams.AudioPublishers = c.publishers
+		videoString = "No"
+	}
+	caseParams.Subscribers = c.subscribers
+	caseParams.Simulcast = true
+	if caseParams.Duration == 0 {
+		caseParams.Duration = 15 * time.Second
+	}
+	fmt.Printf("\nRunning test: %d pub, %d sub, video: %s\n", c.publishers, c.subscribers, videoString)
+
+	stats, err := t.run(caseParams, true)
+	if err != nil {
+		return err
+	}
+	if t.Params.Context.Err() != nil {
+		return err
+	}
+
+	var tracks, packets, dropped, errCount int64
+	for _, testerStats := range stats {
+		for _, trackStats := range testerStats.trackStats {
+			tracks++
+			packets += trackStats.packets.Load()
+			dropped += trackStats.dropped.Load()
+		}
+		if testerStats.err != nil {
+			errCount++
+		}
+	}
+	_, _ = fmt.Fprintf(w, "%s\t|%d\t| %d\t| %d\t| %s\t| %.3f%%| %d\t\n",
+		t.Params.Room, c.publishers, c.subscribers, tracks, videoString, 100*float64(dropped)/float64(dropped+packets), errCount)
+
+	return nil
+}
 
 func (t *LoadTest) RunSuite() error {
 	cases := []*struct {
@@ -172,7 +227,7 @@ func (t *LoadTest) RunSuite() error {
 		}
 		fmt.Printf("\nRunning test: %d pub, %d sub, video: %s\n", c.publishers, c.subscribers, videoString)
 
-		stats, err := t.run(caseParams)
+		stats, err := t.run(caseParams, false)
 		if err != nil {
 			return err
 		}
@@ -199,7 +254,7 @@ func (t *LoadTest) RunSuite() error {
 	return nil
 }
 
-func (t *LoadTest) run(params Params) (map[string]*testerStats, error) {
+func (t *LoadTest) run(params Params, cgc bool) (map[string]*testerStats, error) {
 	if params.Room == "" {
 		params.Room = fmt.Sprintf("testroom%d", rand.Int31n(1000))
 	}
@@ -269,7 +324,7 @@ func (t *LoadTest) run(params Params) (map[string]*testerStats, error) {
 				var video string
 				var err error
 				if params.Simulcast {
-					video, err = tester.PublishSimulcastTrack("video-simulcast", params.VideoResolution, params.VideoCodec)
+					video, err = tester.PublishSimulcastTrack("video-simulcast", params.VideoResolution, params.VideoCodec, cgc)
 				} else {
 					video, err = tester.PublishVideoTrack("video", params.VideoResolution, params.VideoCodec)
 				}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,6 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"livekit-cli-cgc/pkg/loadtester"
+	"text/tabwriter"
 
 	"github.com/livekit/protocol/logger"
 	lksdk "github.com/livekit/server-sdk-go"
@@ -77,6 +79,18 @@ var LoadTestCommands = []*cli.Command{
 				Usage:  "runs set list of load test cases",
 				Hidden: true,
 			},
+			&cli.IntFlag{
+				Name:   "run-cgc",
+				Usage:  "runs set list of cgc load test cases",
+				Value:  0,
+				Hidden: true,
+			},
+			&cli.IntFlag{
+				Name:   "use-case",
+				Usage:  "runs set list of cgc load test cases",
+				Value:  0,
+				Hidden: true,
+			},
 		),
 	},
 }
@@ -125,6 +139,49 @@ func loadTest(c *cli.Context) error {
 			test.Params.Duration = time.Second * 15
 		}
 		return test.RunSuite()
+	}
+
+	cgcRoom := c.Int("run-cgc")
+	var w *tabwriter.Writer
+	useCase := c.Int("use-case")
+	filename := fmt.Sprintf("cgc_%d_%d.log", useCase, cgcRoom)
+	if cgcRoom > 0 {
+		f, _ := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0600)
+		w = tabwriter.NewWriter(f, 1, 1, 1, ' ', 0)
+		_, _ = fmt.Fprint(w, "\nRoom\t|Pubs\t| Subs\t| Tracks\t| Video\t| Packet loss\t| Errors\n")
+	}
+	for i := cgcRoom; i > 0; i-- {
+		// leave out room name and pub/sub counts
+		cgcParams := loadtester.Params{
+			Context:         ctx,
+			VideoResolution: "high",
+			VideoCodec:      "h264",
+			Duration:        0,
+			NumPerSecond:    3,
+			Simulcast:       true,
+			TesterParams: loadtester.TesterParams{
+				URL:            pc.URL,
+				APIKey:         pc.APIKey,
+				APISecret:      pc.APISecret,
+				Room:           fmt.Sprintf("%s_%d", c.String("room"), i),
+				IdentityPrefix: c.String("identity-prefix"),
+				Layout:         layout,
+			},
+		}
+
+		test := loadtester.NewLoadTest(cgcParams)
+		if test.Params.Duration == 0 {
+			test.Params.Duration = time.Second * 100
+		}
+		if i == 1 {
+			test.Params.Duration += time.Second * 5
+			test.RunCGCSuite(useCase, w)
+			return w.Flush()
+		} else {
+			go func() {
+				test.RunCGCSuite(useCase, w)
+			}()
+		}
 	}
 
 	params.VideoPublishers = c.Int("video-publishers")
