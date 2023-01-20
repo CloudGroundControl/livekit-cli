@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	maxVideoLate = 1000 // nearly 2s for fhd video
+	maxVideoLate = 2000 // nearly 2s for fhd video
 	videoTimeout = time.Second * 2
 	maxAudioLate = 200 // 4s for audio
 	audioTimeout = time.Second * 4

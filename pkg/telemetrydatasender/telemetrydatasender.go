@@ -11,11 +11,6 @@ import (
 	lksdk "github.com/livekit/server-sdk-go"
 )
 
-const (
-	maxVideoLate = 1000 // nearly 2s for fhd video
-	maxAudioLate = 200  // 4s for audio
-)
-
 func getLatestFile(dir string) (rv string) {
 	rv = ""
 	files, err := ioutil.ReadDir(dir)
@@ -150,7 +145,7 @@ func (s *TelemetryDataSender) SendJson() {
 	// poll for json data
 	jsonFilename := getLatestFile(s.ForwardFolder)
 	if jsonFilename != "" {
-		fmt.Println("Json File Read: " + jsonFilename)
+		//fmt.Println("Json File Read: " + jsonFilename)
 		data, err3 := os.ReadFile(jsonFilename)
 		if err3 == nil && len(s.destIds) > 0 {
 			var yoloData Yolo
@@ -162,7 +157,7 @@ func (s *TelemetryDataSender) SendJson() {
 			if (s.destIds)[0] != "broadcast" {
 				ids = s.destIds
 			}
-			fmt.Printf("ID: %d \n", len(ids))
+			//fmt.Printf("ID: %d \n", len(ids))
 			err3 = s.lp.PublishData(data, livekit.DataPacket_RELIABLE, ids)
 		}
 		if err3 != nil {

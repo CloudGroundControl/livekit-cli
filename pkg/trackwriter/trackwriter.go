@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	maxVideoLate = 1000 // nearly 2s for fhd video
+	maxVideoLate = 2000 // nearly 2s for fhd video
 	maxAudioLate = 200  // 4s for audio
 )
 
